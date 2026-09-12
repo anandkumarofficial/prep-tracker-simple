@@ -396,13 +396,13 @@ function renderLog() {
     : filtered.map((s) => {
       const acc = s.questionsAttempted > 0 ? Math.round((s.questionsCorrect / s.questionsAttempted) * 100) : null;
       return `
-      <div class="list-row" data-id="${s.id}">
-        <span class="mono muted small" style="width:88px;flex-shrink:0">${s.date}</span>
-        <div style="flex:1;min-width:0">
+      <div class="list-row row-entry" data-id="${s.id}">
+        <span class="mono muted small entry-date">${s.date}</span>
+        <div class="entry-content">
           <div>${badgeExam(s.exam)} <strong>${esc(s.subject)}</strong> ${s.topic ? `<span class="muted small">· ${esc(s.topic)}</span>` : ""} <span class="badge">${esc(s.studyType)}</span> ${!s.completed ? '<span class="badge red">Incomplete</span>' : ""}</div>
           <div class="muted small">${s.startTime}–${s.endTime} · ${hoursLabel(s.durationMinutes)}${acc !== null ? ` · ${s.questionsCorrect}/${s.questionsAttempted} (${acc}% acc.)` : ""}${s.notes ? ` · ${esc(s.notes)}` : ""}</div>
         </div>
-        <div class="row gap" style="margin:0">
+        <div class="entry-actions">
           <button class="btn ghost dup-btn">Duplicate</button>
           <button class="btn ghost edit-btn">Edit</button>
           <button class="btn danger del-btn">Delete</button>
@@ -773,13 +773,13 @@ function renderMocks() {
     : sorted.map((m) => {
       const pct = m.maxMarks > 0 ? ((m.marksObtained / m.maxMarks) * 100).toFixed(1) : "—";
       return `
-      <div class="list-row" data-id="${m.id}">
-        <span class="mono muted small" style="width:80px;flex-shrink:0">${m.date}</span>
-        <div style="flex:1;min-width:0">
+      <div class="list-row row-entry" data-id="${m.id}">
+        <span class="mono muted small entry-date">${m.date}</span>
+        <div class="entry-content">
           <div>${badgeExam(m.exam)} <strong>${esc(m.testName || "Untitled test")}</strong></div>
           <div class="muted small">${m.correct}/${m.attempted} correct of ${m.totalQuestions} · ${m.marksObtained}/${m.maxMarks} marks (${pct}%) · ${m.timeTakenMinutes}min</div>
         </div>
-        <div class="row gap" style="margin:0">
+        <div class="entry-actions">
           <button class="btn ghost edit-mock">Edit</button>
           <button class="btn danger del-mock">Delete</button>
         </div>
