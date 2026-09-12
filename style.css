@@ -143,6 +143,10 @@ textarea { width: 100%; resize: vertical; }
 /* List rows */
 .list-row { padding: 12px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 10px; align-items: center; }
 .list-row:last-child { border-bottom: none; }
+.row-entry { align-items: flex-start; flex-wrap: wrap; }
+.entry-date { width: 88px; flex-shrink: 0; padding-top: 10px; }
+.entry-content { flex: 1 1 240px; min-width: 0; overflow-wrap: break-word; }
+.entry-actions { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
 .empty { text-align: center; padding: 36px 10px; border: 1.5px dashed var(--border); border-radius: 14px; color: var(--muted); background: var(--surface2); }
 .empty strong { color: #fff; display: block; margin-bottom: 4px; font-weight: 700; font-family: var(--font-display); font-size: 16px; }
 
@@ -245,6 +249,13 @@ textarea { width: 100%; resize: vertical; }
 
   .cal-cell { font-size: 9.5px; padding: 4px; }
   .cal-hrs { font-size: 9px; }
+
+  /* Daily Log / Mock Test rows: full vertical stack, no overlap */
+  .row-entry { flex-direction: column; align-items: stretch; gap: 8px; }
+  .entry-date { width: auto; padding-top: 0; }
+  .entry-content { flex: 1 1 auto; }
+  .entry-actions { width: 100%; }
+  .entry-actions .btn { flex: 1; text-align: center; padding: 8px 10px; font-size: 13px; }
 }
 
 @media (max-width: 420px) {
