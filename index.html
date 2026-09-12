@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control Room — RRB JE + CUET Prep Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="dot"></span>
+        <span>CONTROL ROOM</span>
+      </div>
+      <p class="dayline" id="dayline">Day — of prep</p>
+      <nav id="nav">
+        <button class="nav-btn active" data-tab="dashboard">◈ Dashboard</button>
+        <button class="nav-btn" data-tab="log">▤ Daily Log</button>
+        <button class="nav-btn" data-tab="plan">☐ Daily Plan</button>
+        <button class="nav-btn" data-tab="calendar">▦ Calendar</button>
+        <button class="nav-btn" data-tab="syllabus">≡ Syllabus</button>
+        <button class="nav-btn" data-tab="mocks">◎ Mock Tests</button>
+        <button class="nav-btn" data-tab="analytics">◲ Analytics</button>
+        <button class="nav-btn" data-tab="settings">⚙ Settings</button>
+      </nav>
+    </aside>
+
+    <main id="main">
+      <!-- DASHBOARD -->
+      <section id="tab-dashboard" class="tab">
+        <div class="row between">
+          <div>
+            <p class="muted mono" id="dashDate"></p>
+            <h1 id="dashTitle">Prep Day</h1>
+          </div>
+          <button class="btn primary" id="btnAddSession">+ Add today's session</button>
+        </div>
+        <div class="grid stats4" id="dashStats"></div>
+        <div class="grid two">
+          <div class="panel"><h3>RRB JE — today</h3><div class="meter" id="meterRRB"></div></div>
+          <div class="panel"><h3>CUET — today</h3><div class="meter" id="meterCUET"></div></div>
+        </div>
+        <div class="panel">
+          <h3>Today's subjects &amp; topics</h3>
+          <div id="todaySessions"></div>
+        </div>
+        <div class="grid two">
+          <div class="panel">
+            <div class="row between"><h3>Recent sessions</h3><a href="#" class="link" data-tab-link="log">View all</a></div>
+            <div id="recentSessions"></div>
+          </div>
+          <div class="panel">
+            <div class="row between"><h3>Revision queue</h3><a href="#" class="link" data-tab-link="syllabus">Open syllabus</a></div>
+            <div id="revisionQueue"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DAILY LOG -->
+      <section id="tab-log" class="tab hidden">
+        <div class="row between">
+          <h1>Daily Log</h1>
+          <button class="btn primary" id="btnAddSession2">+ Add session</button>
+        </div>
+        <div class="row gap">
+          <input id="logSearch" placeholder="Search subject, topic, notes…" />
+          <select id="logExamFilter"><option>All</option><option>RRB JE</option><option>CUET</option></select>
+        </div>
+        <div class="panel"><div id="logList"></div></div>
+      </section>
+
+      <!-- DAILY PLAN -->
+      <section id="tab-plan" class="tab hidden">
+        <div class="row between">
+          <h1>Daily Plan</h1>
+          <input type="date" id="planDate" />
+        </div>
+        <div class="panel">
+          <h3>Today's targets</h3>
+          <label class="field">Main target for the day<input id="planMain" /></label>
+          <div class="grid two">
+            <label class="field">RRB JE target<input id="planRRB" /></label>
+            <label class="field">CUET target<input id="planCUET" /></label>
+          </div>
+          <label class="field">Topics to cover<textarea id="planTopics" rows="2"></textarea></label>
+          <label class="field short">Questions target<input type="number" id="planQTarget" min="0" /></label>
+        </div>
+        <div class="panel">
+          <div class="row between"><h3>Checklist</h3><span class="muted mono" id="planChecklistCount"></span></div>
+          <div id="planChecklist"></div>
+          <div class="row gap">
+            <input id="planNewTask" placeholder="Add a planned task…" />
+            <button class="btn ghost" id="btnAddTask">Add</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>End-of-day reflection</h3>
+          <textarea id="planReflection" rows="4" placeholder="What worked, what didn't, adjustments for tomorrow…"></textarea>
+        </div>
+      </section>
+
+      <!-- CALENDAR -->
+      <section id="tab-calendar" class="tab hidden">
+        <div class="row between">
+          <h1>Calendar</h1>
+          <div class="row gap">
+            <button class="btn ghost" id="calPrev">←</button>
+            <span class="mono" id="calMonthLabel"></span>
+            <button class="btn ghost" id="calNext">→</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="cal-grid cal-head">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+        <div class="row gap">
+          <span class="badge green">Completed</span>
+          <span class="badge amber">Partial / studied</span>
+          <span class="badge red">Missed</span>
+          <span class="badge">Rest day</span>
+        </div>
+      </section>
+
+      <!-- SYLLABUS -->
+      <section id="tab-syllabus" class="tab hidden">
+        <h1>Syllabus Tracker</h1>
+        <div class="panel">
+          <h3>Add a topic</h3>
+          <div class="grid four end">
+            <label class="field">Exam
+              <select id="topicExam"><option>RRB JE</option><option>CUET</option></select>
+            </label>
+            <label class="field">Subject
+              <select id="topicSubject"></select>
+            </label>
+            <label class="field">Topic
+              <input id="topicName" placeholder="e.g. Transformers" />
+            </label>
+            <button class="btn primary" id="btnAddTopic">Add topic</button>
+          </div>
+        </div>
+        <div class="row gap">
+          <select id="synFilterExam"><option value="All">All exams</option><option>RRB JE</option><option>CUET</option></select>
+          <select id="synFilterSubject"><option value="All">All subjects</option></select>
+          <select id="synFilterStatus">
+            <option value="All">All statuses</option>
+            <option>Not Started</option><option>In Progress</option><option>Completed</option><option>Needs Revision</option>
+          </select>
+        </div>
+        <div id="syllabusGroups"></div>
+      </section>
+
+      <!-- MOCK TESTS -->
+      <section id="tab-mocks" class="tab hidden">
+        <div class="row between">
+          <h1>Mock Tests</h1>
+          <button class="btn primary" id="btnAddMock">+ Add mock test</button>
+        </div>
+        <div class="panel">
+          <h3>Score trend (%)</h3>
+          <div id="mockChart" class="chart"></div>
+        </div>
+        <div class="panel"><div id="mockList"></div></div>
+      </section>
+
+      <!-- ANALYTICS -->
+      <section id="tab-analytics" class="tab hidden">
+        <h1>Analytics</h1>
+        <div class="grid stats4" id="anStats"></div>
+        <div class="panel">
+          <h3>This week's hours</h3>
+          <div id="anWeekChart" class="chart bars"></div>
+        </div>
+        <div class="grid two">
+          <div class="panel"><h3>Hours by subject</h3><div id="anSubjectChart"></div></div>
+          <div class="panel"><h3>Weakest subjects (by accuracy)</h3><div id="anWeak"></div></div>
+        </div>
+        <div class="panel"><h3>Suggested revision</h3><div id="anRevision"></div></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="tab-settings" class="tab hidden">
+        <h1>Settings</h1>
+        <div class="panel">
+          <h3>Daily targets</h3>
+          <div class="grid three">
+            <label class="field">Overall daily target (hours)<input type="number" id="setDaily" min="0" /></label>
+            <label class="field">RRB JE target (hours)<input type="number" id="setRRB" min="0" /></label>
+            <label class="field">CUET target (hours)<input type="number" id="setCUET" min="0" /></label>
+          </div>
+          <label class="field short">Preparation start date (Day 1)<input type="date" id="setStartDate" /></label>
+        </div>
+        <div class="panel">
+          <h3>RRB JE subjects</h3>
+          <div id="subjectsRRB" class="chips"></div>
+          <div class="row gap"><input id="newSubjectRRB" placeholder="Add subject…" /><button class="btn ghost" id="btnAddSubjectRRB">Add</button></div>
+        </div>
+        <div class="panel">
+          <h3>CUET subjects</h3>
+          <div id="subjectsCUET" class="chips"></div>
+          <div class="row gap"><input id="newSubjectCUET" placeholder="Add subject…" /><button class="btn ghost" id="btnAddSubjectCUET">Add</button></div>
+        </div>
+        <div class="panel">
+          <h3>Backup &amp; data</h3>
+          <div class="row gap">
+            <button class="btn ghost" id="btnExportJSON">Export full backup (JSON)</button>
+            <button class="btn ghost" id="btnExportCSV">Export sessions (CSV)</button>
+            <button class="btn ghost" id="btnImport">Import backup</button>
+            <input type="file" id="fileImport" accept="application/json" class="hidden" />
+          </div>
+          <p class="muted small">Everything lives only in this browser. Export a backup regularly.</p>
+        </div>
+        <div class="panel">
+          <h3>Danger zone</h3>
+          <div id="resetZone"><button class="btn danger" id="btnReset">Reset all data</button></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Session modal -->
+  <div class="modal-overlay hidden" id="sessionModal">
+    <div class="modal">
+      <div class="modal-head"><h3 id="sessionModalTitle">Add study session</h3><button class="close" data-close="sessionModal">×</button></div>
+      <div class="modal-body">
+        <div class="grid three">
+          <label class="field">Date<input type="date" id="sDate" /></label>
+          <label class="field">Start time<input type="time" id="sStart" /></label>
+          <label class="field">End time<input type="time" id="sEnd" /></label>
+        </div>
+        <div class="row gap small-text">
+          <label><input type="checkbox" id="sManual" /> Enter duration manually</label>
+          <input type="number" id="sManualMins" class="hidden w80" min="0" />
+          <span class="mono" id="sDerived"></span>
+        </div>
+        <div class="grid two">
+          <label class="field">Exam
+            <select id="sExam"><option>RRB JE</option><option>CUET</option></select>
+          </label>
+          <label class="field">Subject
+            <select id="sSubject"></select>
+          </label>
+        </div>
+        <div class="grid two">
+          <label class="field">Topic<input id="sTopic" /></label>
+          <label class="field">Subtopic<input id="sSubtopic" /></label>
+        </div>
+        <div class="grid two">
+          <label class="field">Study type
+            <select id="sType">
+              <option>Lecture</option><option>Reading</option><option>Practice</option>
+              <option>Revision</option><option>Mock Test</option><option>PYQ</option><option>Other</option>
+            </select>
+          </label>
+          <label class="field">Confidence
+            <select id="sConfidence"><option>Low</option><option>Medium</option><option>High</option></select>
+          </label>
+        </div>
+        <div class="grid two">
+          <label class="field">Questions attempted<input type="number" id="sQAttempted" min="0" value="0" /></label>
+          <label class="field">Questions correct<input type="number" id="sQCorrect" min="0" value="0" /></label>
+        </div>
+        <label class="field">Notes<textarea id="sNotes" rows="2"></textarea></label>
+        <label class="small-text"><input type="checkbox" id="sCompleted" checked /> Session completed as planned</label>
+        <div class="row end gap">
+          <button class="btn ghost" data-close="sessionModal">Cancel</button>
+          <button class="btn primary" id="sSave">Add session</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mock test modal -->
+  <div class="modal-overlay hidden" id="mockModal">
+    <div class="modal">
+      <div class="modal-head"><h3 id="mockModalTitle">Add mock test</h3><button class="close" data-close="mockModal">×</button></div>
+      <div class="modal-body">
+        <div class="grid three">
+          <label class="field">Date<input type="date" id="mDate" /></label>
+          <label class="field">Exam<select id="mExam"><option>RRB JE</option><option>CUET</option></select></label>
+          <label class="field">Subject<input id="mSubject" /></label>
+        </div>
+        <label class="field">Test name<input id="mName" placeholder="e.g. RRB JE Full Mock 4" /></label>
+        <div class="grid four">
+          <label class="field">Total questions<input type="number" id="mTotal" min="0" value="0" /></label>
+          <label class="field">Attempted<input type="number" id="mAttempted" min="0" value="0" /></label>
+          <label class="field">Correct<input type="number" id="mCorrect" min="0" value="0" /></label>
+          <label class="field">Incorrect<input type="number" id="mIncorrect" min="0" value="0" /></label>
+        </div>
+        <div class="grid four">
+          <label class="field">Unattempted<input type="number" id="mUnattempted" min="0" value="0" /></label>
+          <label class="field">Marks obtained<input type="number" id="mMarks" value="0" /></label>
+          <label class="field">Max marks<input type="number" id="mMaxMarks" value="0" /></label>
+          <label class="field">Time taken (min)<input type="number" id="mTime" min="0" value="0" /></label>
+        </div>
+        <label class="field">Weak topics / mistakes<textarea id="mMistakes" rows="2"></textarea></label>
+        <label class="field">Notes<textarea id="mNotes" rows="2"></textarea></label>
+        <div class="row end gap">
+          <button class="btn ghost" data-close="mockModal">Cancel</button>
+          <button class="btn primary" id="mSave">Add test</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Day detail modal -->
+  <div class="modal-overlay hidden" id="dayModal">
+    <div class="modal">
+      <div class="modal-head"><h3 id="dayModalTitle"></h3><button class="close" data-close="dayModal">×</button></div>
+      <div class="modal-body" id="dayModalBody"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
