@@ -193,19 +193,19 @@ textarea { width: 100%; resize: vertical; }
   .app { flex-direction: column; }
 
   main {
-    padding: 16px 14px 88px; /* extra bottom padding so content clears the fixed bottom nav */
+    padding: 74px 14px 24px; /* top padding so content clears the fixed top nav */
     max-width: 100%;
   }
 
-  /* Sidebar becomes a fixed bottom tab bar */
+  /* Sidebar becomes a fixed top tab bar */
   .sidebar {
     position: fixed;
-    left: 0; right: 0; bottom: 0;
+    left: 0; right: 0; top: 0;
     width: 100%;
     flex-direction: row;
     border-right: none;
-    border-top: 1px solid var(--border);
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    border-bottom: 1px solid var(--border);
+    padding: calc(6px + env(safe-area-inset-top)) 4px 6px;
     z-index: 40;
     background: var(--surface);
   }
@@ -250,5 +250,5 @@ textarea { width: 100%; resize: vertical; }
 @media (max-width: 420px) {
   .grid.three, .grid.four, .grid.four.end { grid-template-columns: 1fr 1fr; }
   .stat .value { font-size: 21px; }
-  main { padding: 14px 10px 88px; }
+  main { padding: 70px 10px 20px; }
 }
