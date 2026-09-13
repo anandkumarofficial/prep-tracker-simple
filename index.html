@@ -6,7 +6,7 @@
   <title>Prep Tracker — RRB JE + CUET</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -18,23 +18,23 @@
       </div>
       <p class="dayline" id="dayline">Day — of prep</p>
       <nav id="nav">
-        <button class="nav-btn active" data-tab="dashboard">◈ Dashboard</button>
-        <button class="nav-btn" data-tab="log">▤ Daily Log</button>
-        <button class="nav-btn" data-tab="plan">☐ Daily Plan</button>
-        <button class="nav-btn" data-tab="calendar">▦ Calendar</button>
-        <button class="nav-btn" data-tab="syllabus">≡ Syllabus</button>
-        <button class="nav-btn" data-tab="mocks">◎ Mock Tests</button>
-        <button class="nav-btn" data-tab="analytics">◲ Analytics</button>
-        <button class="nav-btn" data-tab="settings">⚙ Settings</button>
+        <button class="nav-btn active" data-tab="dashboard"><span class="nav-icon">◈</span><span class="nav-label">Dashboard</span></button>
+        <button class="nav-btn" data-tab="log"><span class="nav-icon">▤</span><span class="nav-label">Daily Log</span></button>
+        <button class="nav-btn" data-tab="plan"><span class="nav-icon">☐</span><span class="nav-label">Daily Plan</span></button>
+        <button class="nav-btn" data-tab="calendar"><span class="nav-icon">▦</span><span class="nav-label">Calendar</span></button>
+        <button class="nav-btn" data-tab="syllabus"><span class="nav-icon">≡</span><span class="nav-label">Syllabus</span></button>
+        <button class="nav-btn" data-tab="mocks"><span class="nav-icon">◎</span><span class="nav-label">Mock Tests</span></button>
+        <button class="nav-btn" data-tab="analytics"><span class="nav-icon">◲</span><span class="nav-label">Analytics</span></button>
+        <button class="nav-btn" data-tab="settings"><span class="nav-icon">⚙</span><span class="nav-label">Settings</span></button>
       </nav>
     </aside>
 
     <main id="main">
       <!-- DASHBOARD -->
       <section id="tab-dashboard" class="tab">
-        <div class="row between">
+        <div class="page-head">
           <div>
-            <p class="muted mono" id="dashDate"></p>
+            <p class="muted mono small" id="dashDate"></p>
             <h1 id="dashTitle">Prep Day</h1>
           </div>
           <button class="btn primary" id="btnAddSession">+ Add today's session</button>
@@ -50,11 +50,11 @@
         </div>
         <div class="grid two">
           <div class="panel">
-            <div class="row between"><h3>Recent sessions</h3><a href="#" class="link" data-tab-link="log">View all</a></div>
+            <div class="panel-head-row"><h3>Recent sessions</h3><a href="#" class="link" data-tab-link="log">View all</a></div>
             <div id="recentSessions"></div>
           </div>
           <div class="panel">
-            <div class="row between"><h3>Revision queue</h3><a href="#" class="link" data-tab-link="syllabus">Open syllabus</a></div>
+            <div class="panel-head-row"><h3>Revision queue</h3><a href="#" class="link" data-tab-link="syllabus">Open syllabus</a></div>
             <div id="revisionQueue"></div>
           </div>
         </div>
@@ -62,11 +62,11 @@
 
       <!-- DAILY LOG -->
       <section id="tab-log" class="tab hidden">
-        <div class="row between">
+        <div class="page-head">
           <h1>Daily Log</h1>
           <button class="btn primary" id="btnAddSession2">+ Add session</button>
         </div>
-        <div class="row gap">
+        <div class="toolbar">
           <input id="logSearch" placeholder="Search subject, topic, notes…" />
           <select id="logExamFilter"><option>All</option><option>RRB JE</option><option>CUET</option></select>
         </div>
@@ -75,9 +75,9 @@
 
       <!-- DAILY PLAN -->
       <section id="tab-plan" class="tab hidden">
-        <div class="row between">
+        <div class="page-head">
           <h1>Daily Plan</h1>
-          <input type="date" id="planDate" />
+          <input type="date" id="planDate" class="date-input" />
         </div>
         <div class="panel">
           <h3>Today's targets</h3>
@@ -87,12 +87,12 @@
             <label class="field">CUET target<input id="planCUET" /></label>
           </div>
           <label class="field">Topics to cover<textarea id="planTopics" rows="2"></textarea></label>
-          <label class="field short">Questions target<input type="number" id="planQTarget" min="0" /></label>
+          <label class="field field-short">Questions target<input type="number" id="planQTarget" min="0" /></label>
         </div>
         <div class="panel">
-          <div class="row between"><h3>Checklist</h3><span class="muted mono" id="planChecklistCount"></span></div>
+          <div class="panel-head-row"><h3>Checklist</h3><span class="muted mono small" id="planChecklistCount"></span></div>
           <div id="planChecklist"></div>
-          <div class="row gap">
+          <div class="toolbar toolbar-tight">
             <input id="planNewTask" placeholder="Add a planned task…" />
             <button class="btn ghost" id="btnAddTask">Add</button>
           </div>
@@ -105,12 +105,12 @@
 
       <!-- CALENDAR -->
       <section id="tab-calendar" class="tab hidden">
-        <div class="row between">
+        <div class="page-head">
           <h1>Calendar</h1>
-          <div class="row gap">
-            <button class="btn ghost" id="calPrev">←</button>
-            <span class="mono" id="calMonthLabel"></span>
-            <button class="btn ghost" id="calNext">→</button>
+          <div class="cal-nav">
+            <button class="btn ghost btn-icon" id="calPrev">←</button>
+            <span class="mono small cal-month" id="calMonthLabel"></span>
+            <button class="btn ghost btn-icon" id="calNext">→</button>
           </div>
         </div>
         <div class="panel">
@@ -119,7 +119,7 @@
           </div>
           <div class="cal-grid" id="calGrid"></div>
         </div>
-        <div class="row gap">
+        <div class="legend-row">
           <span class="badge green">Completed</span>
           <span class="badge amber">Partial / studied</span>
           <span class="badge red">Missed</span>
@@ -129,10 +129,10 @@
 
       <!-- SYLLABUS -->
       <section id="tab-syllabus" class="tab hidden">
-        <h1>Syllabus Tracker</h1>
+        <h1 class="page-title">Syllabus Tracker</h1>
         <div class="panel">
           <h3>Add a topic</h3>
-          <div class="grid four end">
+          <div class="grid four-end">
             <label class="field">Exam
               <select id="topicExam"><option>RRB JE</option><option>CUET</option></select>
             </label>
@@ -145,7 +145,7 @@
             <button class="btn primary" id="btnAddTopic">Add topic</button>
           </div>
         </div>
-        <div class="row gap">
+        <div class="toolbar">
           <select id="synFilterExam"><option value="All">All exams</option><option>RRB JE</option><option>CUET</option></select>
           <select id="synFilterSubject"><option value="All">All subjects</option></select>
           <select id="synFilterStatus">
@@ -158,11 +158,11 @@
 
       <!-- MOCK TESTS -->
       <section id="tab-mocks" class="tab hidden">
-        <div class="row between">
+        <div class="page-head">
           <h1>Mock Tests</h1>
           <button class="btn primary" id="btnAddMock">+ Add mock test</button>
         </div>
-        <div class="panel">
+        <div class="panel" id="mockChartPanel">
           <h3>Score trend (%)</h3>
           <div id="mockChart" class="chart"></div>
         </div>
@@ -171,22 +171,24 @@
 
       <!-- ANALYTICS -->
       <section id="tab-analytics" class="tab hidden">
-        <h1>Analytics</h1>
-        <div class="grid stats4" id="anStats"></div>
-        <div class="panel">
-          <h3>This week's hours</h3>
-          <div id="anWeekChart" class="chart bars"></div>
+        <h1 class="page-title">Analytics</h1>
+        <div id="analyticsBody">
+          <div class="grid stats4" id="anStats"></div>
+          <div class="panel">
+            <h3>This week's hours</h3>
+            <div id="anWeekChart" class="chart bars"></div>
+          </div>
+          <div class="grid two">
+            <div class="panel"><h3>Hours by subject</h3><div id="anSubjectChart"></div></div>
+            <div class="panel"><h3>Weakest subjects (by accuracy)</h3><div id="anWeak"></div></div>
+          </div>
+          <div class="panel"><h3>Suggested revision</h3><div id="anRevision"></div></div>
         </div>
-        <div class="grid two">
-          <div class="panel"><h3>Hours by subject</h3><div id="anSubjectChart"></div></div>
-          <div class="panel"><h3>Weakest subjects (by accuracy)</h3><div id="anWeak"></div></div>
-        </div>
-        <div class="panel"><h3>Suggested revision</h3><div id="anRevision"></div></div>
       </section>
 
       <!-- SETTINGS -->
       <section id="tab-settings" class="tab hidden">
-        <h1>Settings</h1>
+        <h1 class="page-title">Settings</h1>
         <div class="panel">
           <h3>Daily targets</h3>
           <div class="grid three">
@@ -194,27 +196,27 @@
             <label class="field">RRB JE target (hours)<input type="number" id="setRRB" min="0" /></label>
             <label class="field">CUET target (hours)<input type="number" id="setCUET" min="0" /></label>
           </div>
-          <label class="field short">Preparation start date (Day 1)<input type="date" id="setStartDate" /></label>
+          <label class="field field-short">Preparation start date (Day 1)<input type="date" id="setStartDate" /></label>
         </div>
         <div class="panel">
           <h3>RRB JE subjects</h3>
           <div id="subjectsRRB" class="chips"></div>
-          <div class="row gap"><input id="newSubjectRRB" placeholder="Add subject…" /><button class="btn ghost" id="btnAddSubjectRRB">Add</button></div>
+          <div class="toolbar toolbar-tight"><input id="newSubjectRRB" placeholder="Add subject…" /><button class="btn ghost" id="btnAddSubjectRRB">Add</button></div>
         </div>
         <div class="panel">
           <h3>CUET subjects</h3>
           <div id="subjectsCUET" class="chips"></div>
-          <div class="row gap"><input id="newSubjectCUET" placeholder="Add subject…" /><button class="btn ghost" id="btnAddSubjectCUET">Add</button></div>
+          <div class="toolbar toolbar-tight"><input id="newSubjectCUET" placeholder="Add subject…" /><button class="btn ghost" id="btnAddSubjectCUET">Add</button></div>
         </div>
         <div class="panel">
           <h3>Backup &amp; data</h3>
-          <div class="row gap">
+          <div class="btn-group">
             <button class="btn ghost" id="btnExportJSON">Export full backup (JSON)</button>
             <button class="btn ghost" id="btnExportCSV">Export sessions (CSV)</button>
             <button class="btn ghost" id="btnImport">Import backup</button>
             <input type="file" id="fileImport" accept="application/json" class="hidden" />
           </div>
-          <p class="muted small">Everything lives only in this browser. Export a backup regularly.</p>
+          <p class="muted small note-text">Everything lives only in this browser's storage. Export a backup regularly.</p>
         </div>
         <div class="panel">
           <h3>Danger zone</h3>
@@ -234,10 +236,10 @@
           <label class="field">Start time<input type="time" id="sStart" /></label>
           <label class="field">End time<input type="time" id="sEnd" /></label>
         </div>
-        <div class="row gap small-text">
-          <label><input type="checkbox" id="sManual" /> Enter duration manually</label>
-          <input type="number" id="sManualMins" class="hidden w80" min="0" />
-          <span class="mono" id="sDerived"></span>
+        <div class="duration-row">
+          <label class="check-label"><input type="checkbox" id="sManual" /> Enter duration manually</label>
+          <input type="number" id="sManualMins" class="hidden duration-input" min="0" />
+          <span class="mono small" id="sDerived"></span>
         </div>
         <div class="grid two">
           <label class="field">Exam
@@ -267,8 +269,8 @@
           <label class="field">Questions correct<input type="number" id="sQCorrect" min="0" value="0" /></label>
         </div>
         <label class="field">Notes<textarea id="sNotes" rows="2"></textarea></label>
-        <label class="small-text"><input type="checkbox" id="sCompleted" checked /> Session completed as planned</label>
-        <div class="row end gap">
+        <label class="check-label"><input type="checkbox" id="sCompleted" checked /> Session completed as planned</label>
+        <div class="modal-footer">
           <button class="btn ghost" data-close="sessionModal">Cancel</button>
           <button class="btn primary" id="sSave">Add session</button>
         </div>
@@ -301,7 +303,7 @@
         </div>
         <label class="field">Weak topics / mistakes<textarea id="mMistakes" rows="2"></textarea></label>
         <label class="field">Notes<textarea id="mNotes" rows="2"></textarea></label>
-        <div class="row end gap">
+        <div class="modal-footer">
           <button class="btn ghost" data-close="mockModal">Cancel</button>
           <button class="btn primary" id="mSave">Add test</button>
         </div>
