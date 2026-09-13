@@ -1,4 +1,8 @@
-/* ===================== STORAGE & STATE ===================== */
+"use strict";
+
+/* ============================================================
+   STORAGE & STATE
+   ============================================================ */
 const STORAGE_KEY = "prep-tracker:data:v1";
 
 const DEFAULT_SETTINGS = {
@@ -12,22 +16,30 @@ const DEFAULT_SETTINGS = {
   },
 };
 
+function cloneSettings() {
+  return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+}
+
+function emptyData() {
+  return { sessions: [], days: {}, topics: [], mockTests: [], plans: {}, settings: cloneSettings() };
+}
+
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { sessions: [], days: {}, topics: [], mockTests: [], plans: {}, settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) };
+    if (!raw) return emptyData();
     const parsed = JSON.parse(raw);
     return {
-      sessions: parsed.sessions || [],
-      days: parsed.days || {},
-      topics: parsed.topics || [],
-      mockTests: parsed.mockTests || [],
-      plans: parsed.plans || {},
-      settings: Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {}),
+      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+      days: parsed.days && typeof parsed.days === "object" ? parsed.days : {},
+      topics: Array.isArray(parsed.topics) ? parsed.topics : [],
+      mockTests: Array.isArray(parsed.mockTests) ? parsed.mockTests : [],
+      plans: parsed.plans && typeof parsed.plans === "object" ? parsed.plans : {},
+      settings: Object.assign(cloneSettings(), parsed.settings || {}),
     };
   } catch (e) {
-    console.error("Failed to load data, starting fresh.", e);
-    return { sessions: [], days: {}, topics: [], mockTests: [], plans: {}, settings: JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) };
+    console.error("Failed to load saved data, starting fresh.", e);
+    return emptyData();
   }
 }
 
@@ -41,7 +53,9 @@ function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
-/* ===================== DATE HELPERS ===================== */
+/* ============================================================
+   DATE HELPERS
+   ============================================================ */
 function pad2(n) { return String(n).padStart(2, "0"); }
 
 function todayStr() {
@@ -54,14 +68,14 @@ function toDate(str) {
   return new Date(y, m - 1, d);
 }
 
+function dstr(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+
 function fmtDate(d, opts) {
   return d.toLocaleDateString("en-IN", opts);
 }
 
 function dayNumber(startDate, dateStr) {
-  const start = toDate(startDate);
-  const date = toDate(dateStr);
-  const diff = Math.round((date - start) / 86400000);
+  const diff = Math.round((toDate(dateStr) - toDate(startDate)) / 86400000);
   return diff + 1;
 }
 
@@ -100,15 +114,17 @@ function monthGridDays(monthDate) {
     const d = new Date(gridStart);
     d.setDate(gridStart.getDate() + i);
     days.push(d);
-    if (i >= 34 && d.getMonth() !== monthDate.getMonth() && (i + 1) % 7 === 0) break;
   }
   return days;
 }
 
-function dstr(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
-function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
 
-/* ===================== CRUD ===================== */
+/* ============================================================
+   CRUD
+   ============================================================ */
 function addSession(s) {
   DATA.sessions.push(Object.assign({ id: uid(), createdAt: new Date().toISOString() }, s));
   save();
@@ -124,7 +140,11 @@ function deleteSession(id) {
 }
 function setDayStatus(date, status, note) {
   const existing = DATA.days[date] || {};
-  DATA.days[date] = { date, status: status !== undefined ? status : existing.status, note: note !== undefined ? note : existing.note };
+  DATA.days[date] = {
+    date,
+    status: status !== undefined ? status : existing.status,
+    note: note !== undefined ? note : existing.note,
+  };
   save();
 }
 function addTopic(t) {
@@ -158,15 +178,24 @@ function savePlan(date, plan) {
   save();
 }
 function getPlan(date) {
-  return DATA.plans[date] || { date, mainTarget: "", rrbTarget: "", cuetTarget: "", topicsToCover: "", questionsTarget: 0, reflection: "", checklist: [] };
+  return DATA.plans[date] || {
+    date, mainTarget: "", rrbTarget: "", cuetTarget: "", topicsToCover: "",
+    questionsTarget: 0, reflection: "", checklist: [],
+  };
 }
 function updateSettings(patch) {
   DATA.settings = Object.assign({}, DATA.settings, patch);
   save();
 }
 
-/* ===================== NAV & MODALS ===================== */
+/* ============================================================
+   NAV, MODALS, SHARED RENDER HELPERS
+   ============================================================ */
 const TABS = ["dashboard", "log", "plan", "calendar", "syllabus", "mocks", "analytics", "settings"];
+
+function currentTab() {
+  return TABS.find((t) => !document.getElementById("tab-" + t).classList.contains("hidden")) || "dashboard";
+}
 
 function showTab(tab) {
   TABS.forEach((t) => {
@@ -190,22 +219,6 @@ function renderTab(tab) {
 function openModal(id) { document.getElementById(id).classList.remove("hidden"); }
 function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
 
-document.querySelectorAll("[data-close]").forEach((btn) => {
-  btn.addEventListener("click", () => closeModal(btn.dataset.close));
-});
-document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.add("hidden"); });
-});
-
-document.getElementById("nav").addEventListener("click", (e) => {
-  const btn = e.target.closest(".nav-btn");
-  if (btn) showTab(btn.dataset.tab);
-});
-document.body.addEventListener("click", (e) => {
-  const link = e.target.closest("[data-tab-link]");
-  if (link) { e.preventDefault(); showTab(link.dataset.tabLink); }
-});
-
 function badgeExam(exam) {
   return `<span class="badge ${exam === "RRB JE" ? "amber" : "teal"}">${esc(exam)}</span>`;
 }
@@ -214,7 +227,39 @@ function subjectOptionsHTML(exam) {
   return DATA.settings.subjects[exam].map((s) => `<option>${esc(s)}</option>`).join("");
 }
 
-/* ===================== DASHBOARD ===================== */
+function emptyState(title, hint) {
+  return `<div class="empty"><strong>${esc(title)}</strong><span>${esc(hint)}</span></div>`;
+}
+
+function renderMeter(elId, value, max, colorVarName, label) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  document.getElementById(elId).innerHTML = `
+    <div class="meter-label"><span>${esc(label)}</span><span>${Math.round(pct)}%</span></div>
+    <div class="meter-track"><div class="meter-fill" style="width:${pct}%;background:var(${colorVarName})"></div></div>
+  `;
+}
+
+/* Wire up static modal close controls & nav once, at load */
+function wireStaticControls() {
+  document.querySelectorAll("[data-close]").forEach((btn) => {
+    btn.addEventListener("click", () => closeModal(btn.dataset.close));
+  });
+  document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.add("hidden"); });
+  });
+  document.getElementById("nav").addEventListener("click", (e) => {
+    const btn = e.target.closest(".nav-btn");
+    if (btn) showTab(btn.dataset.tab);
+  });
+  document.body.addEventListener("click", (e) => {
+    const link = e.target.closest("[data-tab-link]");
+    if (link) { e.preventDefault(); showTab(link.dataset.tabLink); }
+  });
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
 function renderDashboard() {
   const today = todayStr();
   const day = dayNumber(DATA.settings.startDate, today);
@@ -230,9 +275,8 @@ function renderDashboard() {
   const correct = todaySessions.reduce((a, s) => a + s.questionsCorrect, 0);
   const accuracy = attempted > 0 ? ((correct / attempted) * 100).toFixed(1) + "%" : "—";
 
-  // streak
   let streak = 0;
-  let cursor = new Date();
+  const cursor = new Date();
   for (;;) {
     const dStr = dstr(cursor);
     const hasSession = DATA.sessions.some((s) => s.date === dStr && s.durationMinutes > 0);
@@ -247,62 +291,64 @@ function renderDashboard() {
 
   document.getElementById("dashStats").innerHTML = `
     <div class="panel"><div class="stat"><span class="label">Studied today</span><span class="value mono">${hoursLabel(totalMin)}</span><span class="sub">of ${DATA.settings.dailyTargetHours}h target</span></div></div>
-    <div class="panel"><div class="stat"><span class="label">Accuracy today</span><span class="value mono" style="color:var(--teal)">${accuracy}</span><span class="sub">${correct}/${attempted} correct</span></div></div>
-    <div class="panel"><div class="stat"><span class="label">Study streak</span><span class="value mono" style="color:var(--green)">${streak}d</span><span class="sub">consecutive study days</span></div></div>
-    <div class="panel"><div class="stat"><span class="label">Topics to revise</span><span class="value mono" style="color:var(--red)">${revisionQueue.length}</span><span class="sub">flagged Needs Revision</span></div></div>
+    <div class="panel"><div class="stat"><span class="label">Accuracy today</span><span class="value mono accent-teal">${accuracy}</span><span class="sub">${correct}/${attempted} correct</span></div></div>
+    <div class="panel"><div class="stat"><span class="label">Study streak</span><span class="value mono accent-green">${streak}d</span><span class="sub">consecutive study days</span></div></div>
+    <div class="panel"><div class="stat"><span class="label">Topics to revise</span><span class="value mono accent-red">${revisionQueue.length}</span><span class="sub">flagged Needs Revision</span></div></div>
   `;
 
-  renderMeter("meterRRB", rrbMin / 60, DATA.settings.rrbTargetHours, "amber", `${hoursLabel(rrbMin)} of ${DATA.settings.rrbTargetHours}h`);
-  renderMeter("meterCUET", cuetMin / 60, DATA.settings.cuetTargetHours, "teal", `${hoursLabel(cuetMin)} of ${DATA.settings.cuetTargetHours}h`);
+  renderMeter("meterRRB", rrbMin / 60, DATA.settings.rrbTargetHours, "--blue", `${hoursLabel(rrbMin)} of ${DATA.settings.rrbTargetHours}h`);
+  renderMeter("meterCUET", cuetMin / 60, DATA.settings.cuetTargetHours, "--teal", `${hoursLabel(cuetMin)} of ${DATA.settings.cuetTargetHours}h`);
 
   document.getElementById("todaySessions").innerHTML = todaySessions.length === 0
     ? emptyState("No sessions logged yet today", "Tap 'Add today's session' when you sit down to study — even a quick 20-minute block counts.")
     : todaySessions.map((s) => `
       <div class="list-row">
-        <div>
+        <div class="row-main-line">
           <div>${badgeExam(s.exam)} <strong>${esc(s.subject)}</strong> · ${esc(s.topic || "—")}</div>
           <div class="muted small">${esc(s.studyType)} · ${s.startTime}–${s.endTime}</div>
         </div>
-        <span class="mono muted">${hoursLabel(s.durationMinutes)}</span>
+        <span class="mono muted small">${hoursLabel(s.durationMinutes)}</span>
       </div>`).join("");
 
   const recent = [...DATA.sessions].sort((a, b) => (a.date + a.startTime < b.date + b.startTime ? 1 : -1)).slice(0, 6);
   document.getElementById("recentSessions").innerHTML = recent.length === 0
     ? `<p class="muted small">Nothing logged yet.</p>`
-    : recent.map((s) => `<div class="list-row"><span class="mono muted">${s.date}</span><span>${esc(s.subject)}</span><span class="mono">${hoursLabel(s.durationMinutes)}</span></div>`).join("");
+    : recent.map((s) => `
+      <div class="list-row">
+        <span class="mono muted small">${s.date}</span>
+        <span class="row-main-line">${esc(s.subject)}</span>
+        <span class="mono small">${hoursLabel(s.durationMinutes)}</span>
+      </div>`).join("");
 
   document.getElementById("revisionQueue").innerHTML = revisionQueue.length === 0
     ? `<p class="muted small">No topics flagged for revision. Mark weak topics in Syllabus.</p>`
-    : revisionQueue.slice(0, 5).map((t) => `<div class="list-row"><span>${esc(t.topic)}</span>${badgeExam(t.exam)}</div>`).join("");
+    : revisionQueue.slice(0, 5).map((t) => `
+      <div class="list-row">
+        <span class="row-main-line">${esc(t.topic)}</span>
+        ${badgeExam(t.exam)}
+      </div>`).join("");
 }
 
-function renderMeter(elId, value, max, color, label) {
-  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
-  const colorVar = color === "amber" ? "var(--amber)" : color === "teal" ? "var(--teal)" : "var(--green)";
-  document.getElementById(elId).innerHTML = `
-    <div class="meter-label"><span>${esc(label)}</span><span>${Math.round(pct)}%</span></div>
-    <div class="meter-track"><div class="meter-fill" style="width:${pct}%;background:${colorVar}"></div></div>
-  `;
-}
-
-function emptyState(title, hint) {
-  return `<div class="empty"><strong>${esc(title)}</strong><span>${esc(hint)}</span></div>`;
-}
-
-/* ===================== SESSION MODAL ===================== */
+/* ============================================================
+   SESSION MODAL (add/edit study session)
+   ============================================================ */
 let editingSessionId = null;
+
+function blankSession(defaultDate) {
+  return {
+    date: defaultDate, startTime: "09:00", endTime: "10:00", manualDuration: false,
+    exam: "RRB JE", subject: DATA.settings.subjects["RRB JE"][0] || "", topic: "", subtopic: "",
+    studyType: "Reading", questionsAttempted: 0, questionsCorrect: 0, notes: "", confidence: "Medium",
+    completed: true, durationMinutes: 60,
+  };
+}
 
 function openSessionModal(defaultDate, session) {
   editingSessionId = session ? session.id : null;
   document.getElementById("sessionModalTitle").textContent = session ? "Edit study session" : "Add study session";
   document.getElementById("sSave").textContent = session ? "Save changes" : "Add session";
 
-  const s = session || {
-    date: defaultDate, startTime: "09:00", endTime: "10:00", manualDuration: false,
-    exam: "RRB JE", subject: DATA.settings.subjects["RRB JE"][0] || "", topic: "", subtopic: "",
-    studyType: "Reading", questionsAttempted: 0, questionsCorrect: 0, notes: "", confidence: "Medium",
-    completed: true, durationMinutes: 60,
-  };
+  const s = session || blankSession(defaultDate);
 
   document.getElementById("sDate").value = s.date;
   document.getElementById("sStart").value = s.startTime;
@@ -326,62 +372,59 @@ function openSessionModal(defaultDate, session) {
 }
 
 function updateDerivedDuration() {
-  const derived = minutesBetween(document.getElementById("sStart").value, document.getElementById("sEnd").value);
+  const derived = minutesBetween(document.getElementById("sStart").value || "00:00", document.getElementById("sEnd").value || "00:00");
   document.getElementById("sDerived").textContent = document.getElementById("sManual").checked ? "" : `= ${derived} min`;
 }
 
-document.getElementById("sStart").addEventListener("input", updateDerivedDuration);
-document.getElementById("sEnd").addEventListener("input", updateDerivedDuration);
-document.getElementById("sManual").addEventListener("change", (e) => {
-  document.getElementById("sManualMins").classList.toggle("hidden", !e.target.checked);
-  updateDerivedDuration();
-});
-document.getElementById("sExam").addEventListener("change", (e) => {
-  document.getElementById("sSubject").innerHTML = subjectOptionsHTML(e.target.value);
-});
+function wireSessionModal() {
+  document.getElementById("sStart").addEventListener("input", updateDerivedDuration);
+  document.getElementById("sEnd").addEventListener("input", updateDerivedDuration);
+  document.getElementById("sManual").addEventListener("change", (e) => {
+    document.getElementById("sManualMins").classList.toggle("hidden", !e.target.checked);
+    updateDerivedDuration();
+  });
+  document.getElementById("sExam").addEventListener("change", (e) => {
+    document.getElementById("sSubject").innerHTML = subjectOptionsHTML(e.target.value);
+  });
 
-document.getElementById("btnAddSession").addEventListener("click", () => openSessionModal(todayStr()));
-document.getElementById("btnAddSession2").addEventListener("click", () => openSessionModal(todayStr()));
+  document.getElementById("btnAddSession").addEventListener("click", () => openSessionModal(todayStr()));
+  document.getElementById("btnAddSession2").addEventListener("click", () => openSessionModal(todayStr()));
 
-document.getElementById("sSave").addEventListener("click", () => {
-  const manual = document.getElementById("sManual").checked;
-  const start = document.getElementById("sStart").value;
-  const end = document.getElementById("sEnd").value;
-  const manualMins = Number(document.getElementById("sManualMins").value || 0);
-  const duration = manual ? manualMins : minutesBetween(start, end);
+  document.getElementById("sSave").addEventListener("click", () => {
+    const manual = document.getElementById("sManual").checked;
+    const start = document.getElementById("sStart").value;
+    const end = document.getElementById("sEnd").value;
+    const manualMins = Number(document.getElementById("sManualMins").value || 0);
+    const duration = manual ? manualMins : minutesBetween(start, end);
+    const date = document.getElementById("sDate").value;
 
-  const payload = {
-    date: document.getElementById("sDate").value,
-    startTime: start,
-    endTime: end,
-    manualDuration: manual,
-    durationMinutes: duration,
-    exam: document.getElementById("sExam").value,
-    subject: document.getElementById("sSubject").value,
-    topic: document.getElementById("sTopic").value,
-    subtopic: document.getElementById("sSubtopic").value,
-    studyType: document.getElementById("sType").value,
-    confidence: document.getElementById("sConfidence").value,
-    questionsAttempted: Number(document.getElementById("sQAttempted").value || 0),
-    questionsCorrect: Number(document.getElementById("sQCorrect").value || 0),
-    notes: document.getElementById("sNotes").value,
-    completed: document.getElementById("sCompleted").checked,
-  };
+    if (!date || !start || !end) { alert("Please fill date, start time and end time."); return; }
 
-  if (!payload.date || !start || !end) { alert("Please fill date, start time and end time."); return; }
+    const payload = {
+      date, startTime: start, endTime: end, manualDuration: manual, durationMinutes: duration,
+      exam: document.getElementById("sExam").value,
+      subject: document.getElementById("sSubject").value,
+      topic: document.getElementById("sTopic").value,
+      subtopic: document.getElementById("sSubtopic").value,
+      studyType: document.getElementById("sType").value,
+      confidence: document.getElementById("sConfidence").value,
+      questionsAttempted: Number(document.getElementById("sQAttempted").value || 0),
+      questionsCorrect: Number(document.getElementById("sQCorrect").value || 0),
+      notes: document.getElementById("sNotes").value,
+      completed: document.getElementById("sCompleted").checked,
+    };
 
-  if (editingSessionId) updateSession(editingSessionId, payload);
-  else addSession(payload);
+    if (editingSessionId) updateSession(editingSessionId, payload);
+    else addSession(payload);
 
-  closeModal("sessionModal");
-  renderTab(currentTab());
-});
-
-function currentTab() {
-  return TABS.find((t) => !document.getElementById("tab-" + t).classList.contains("hidden")) || "dashboard";
+    closeModal("sessionModal");
+    renderTab(currentTab());
+  });
 }
 
-/* ===================== DAILY LOG ===================== */
+/* ============================================================
+   DAILY LOG
+   ============================================================ */
 function renderLog() {
   const query = document.getElementById("logSearch").value.trim().toLowerCase();
   const examFilter = document.getElementById("logExamFilter").value;
@@ -396,13 +439,13 @@ function renderLog() {
     : filtered.map((s) => {
       const acc = s.questionsAttempted > 0 ? Math.round((s.questionsCorrect / s.questionsAttempted) * 100) : null;
       return `
-      <div class="list-row row-entry" data-id="${s.id}">
-        <span class="mono muted small entry-date">${s.date}</span>
-        <div class="entry-content">
-          <div>${badgeExam(s.exam)} <strong>${esc(s.subject)}</strong> ${s.topic ? `<span class="muted small">· ${esc(s.topic)}</span>` : ""} <span class="badge">${esc(s.studyType)}</span> ${!s.completed ? '<span class="badge red">Incomplete</span>' : ""}</div>
+      <div class="list-row has-actions" data-id="${s.id}">
+        <span class="mono muted small row-fixed">${s.date}</span>
+        <div class="row-main">
+          <div>${badgeExam(s.exam)} <strong>${esc(s.subject)}</strong>${s.topic ? ` <span class="muted small">· ${esc(s.topic)}</span>` : ""} <span class="badge">${esc(s.studyType)}</span>${!s.completed ? ' <span class="badge red">Incomplete</span>' : ""}</div>
           <div class="muted small">${s.startTime}–${s.endTime} · ${hoursLabel(s.durationMinutes)}${acc !== null ? ` · ${s.questionsCorrect}/${s.questionsAttempted} (${acc}% acc.)` : ""}${s.notes ? ` · ${esc(s.notes)}` : ""}</div>
         </div>
-        <div class="entry-actions">
+        <div class="row-actions">
           <button class="btn ghost dup-btn">Duplicate</button>
           <button class="btn ghost edit-btn">Edit</button>
           <button class="btn danger del-btn">Delete</button>
@@ -413,14 +456,13 @@ function renderLog() {
   document.querySelectorAll("#logList .edit-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const id = e.target.closest("[data-id]").dataset.id;
-      const s = DATA.sessions.find((x) => x.id === id);
-      openSessionModal(todayStr(), s);
+      openSessionModal(todayStr(), DATA.sessions.find((x) => x.id === id));
     });
   });
   document.querySelectorAll("#logList .del-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const id = e.target.closest("[data-id]").dataset.id;
-      if (confirm("Delete this session?")) { deleteSession(id); renderLog(); renderDashboard(); }
+      if (confirm("Delete this session?")) { deleteSession(id); renderLog(); }
     });
   });
   document.querySelectorAll("#logList .dup-btn").forEach((btn) => {
@@ -435,10 +477,14 @@ function renderLog() {
   });
 }
 
-document.getElementById("logSearch").addEventListener("input", renderLog);
-document.getElementById("logExamFilter").addEventListener("change", renderLog);
+function wireLog() {
+  document.getElementById("logSearch").addEventListener("input", renderLog);
+  document.getElementById("logExamFilter").addEventListener("change", renderLog);
+}
 
-/* ===================== DAILY PLAN ===================== */
+/* ============================================================
+   DAILY PLAN
+   ============================================================ */
 function renderPlan() {
   const dateInput = document.getElementById("planDate");
   if (!dateInput.value) dateInput.value = todayStr();
@@ -455,10 +501,12 @@ function renderPlan() {
   const doneCount = plan.checklist.filter((t) => t.done).length;
   document.getElementById("planChecklistCount").textContent = `${doneCount}/${plan.checklist.length}`;
   document.getElementById("planChecklist").innerHTML = plan.checklist.map((t) => `
-    <div class="row gap" data-id="${t.id}" style="margin-bottom:6px">
-      <input type="checkbox" class="chk-toggle" ${t.done ? "checked" : ""} />
-      <span style="flex:1${t.done ? ";text-decoration:line-through;color:var(--muted)" : ""}">${esc(t.text)}</span>
-      <button class="btn ghost chk-remove" style="padding:4px 8px">Remove</button>
+    <div class="list-row has-actions" data-id="${t.id}">
+      <div class="row-main check-label" style="margin:0">
+        <input type="checkbox" class="chk-toggle" ${t.done ? "checked" : ""} />
+        <span class="row-main-line${t.done ? " muted" : ""}" ${t.done ? 'style="text-decoration:line-through"' : ""}>${esc(t.text)}</span>
+      </div>
+      <div class="row-actions"><button class="btn ghost chk-remove">Remove</button></div>
     </div>`).join("");
 
   document.querySelectorAll("#planChecklist .chk-toggle").forEach((cb) => {
@@ -488,31 +536,34 @@ function savePlanField(field, value) {
   savePlan(date, p);
 }
 
-["planMain", "planRRB", "planCUET", "planTopics", "planReflection"].forEach((id) => {
+function wirePlan() {
   const fieldMap = { planMain: "mainTarget", planRRB: "rrbTarget", planCUET: "cuetTarget", planTopics: "topicsToCover", planReflection: "reflection" };
-  document.getElementById(id).addEventListener("change", (e) => savePlanField(fieldMap[id], e.target.value));
-});
-document.getElementById("planQTarget").addEventListener("change", (e) => savePlanField("questionsTarget", Number(e.target.value || 0)));
-document.getElementById("planDate").addEventListener("change", renderPlan);
+  Object.keys(fieldMap).forEach((id) => {
+    document.getElementById(id).addEventListener("change", (e) => savePlanField(fieldMap[id], e.target.value));
+  });
+  document.getElementById("planQTarget").addEventListener("change", (e) => savePlanField("questionsTarget", Number(e.target.value || 0)));
+  document.getElementById("planDate").addEventListener("change", renderPlan);
 
-document.getElementById("btnAddTask").addEventListener("click", () => {
-  const input = document.getElementById("planNewTask");
-  const text = input.value.trim();
-  if (!text) return;
-  const date = document.getElementById("planDate").value || todayStr();
-  const p = getPlan(date);
-  p.checklist.push({ id: uid(), text, done: false });
-  savePlan(date, p);
-  input.value = "";
-  renderPlan();
-});
-document.getElementById("planNewTask").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); document.getElementById("btnAddTask").click(); }
-});
+  document.getElementById("btnAddTask").addEventListener("click", () => {
+    const input = document.getElementById("planNewTask");
+    const text = input.value.trim();
+    if (!text) return;
+    const date = document.getElementById("planDate").value || todayStr();
+    const p = getPlan(date);
+    p.checklist.push({ id: uid(), text, done: false });
+    savePlan(date, p);
+    input.value = "";
+    renderPlan();
+  });
+  document.getElementById("planNewTask").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); document.getElementById("btnAddTask").click(); }
+  });
+}
 
-/* ===================== CALENDAR ===================== */
+/* ============================================================
+   CALENDAR
+   ============================================================ */
 let calMonth = new Date();
-let calSelectedDate = null;
 
 function dayStatsFor(dateStr) {
   const sessions = DATA.sessions.filter((s) => s.date === dateStr);
@@ -526,19 +577,21 @@ function renderCalendar() {
   document.getElementById("calMonthLabel").textContent = fmtDate(calMonth, { month: "long", year: "numeric" });
   const days = monthGridDays(calMonth);
   document.getElementById("calGrid").innerHTML = days.map((d) => {
-    const dStr = dstr(d);
+    const dateStr = dstr(d);
     const inMonth = d.getMonth() === calMonth.getMonth();
-    const stat = dayStatsFor(dStr);
-    const record = DATA.days[dStr];
+    const stat = dayStatsFor(dateStr);
+    const record = DATA.days[dateStr];
     let toneClass = "";
     if (record && record.status === "Completed") toneClass = "st-green";
     else if (record && record.status === "Missed") toneClass = "st-red";
-    else if (record && (record.status === "Partial")) toneClass = "st-amber";
+    else if (record && record.status === "Partial") toneClass = "st-amber";
     else if (stat.total > 0) toneClass = "st-amber";
     return `
-      <div class="cal-cell ${inMonth ? "" : "dim"} ${toneClass}" data-date="${dStr}">
+      <div class="cal-cell ${inMonth ? "" : "dim"} ${toneClass}" data-date="${dateStr}">
         <span class="cal-num">${d.getDate()}</span>
-        ${stat.total > 0 ? `<span class="cal-hrs">${hoursLabel(stat.total)}</span>` : record && record.status ? `<span class="cal-hrs muted" style="font-size:9px">${record.status}</span>` : ""}
+        ${stat.total > 0
+          ? `<span class="cal-hrs">${hoursLabel(stat.total)}</span>`
+          : record && record.status ? `<span class="cal-hrs status-label">${record.status}</span>` : ""}
       </div>`;
   }).join("");
 
@@ -547,36 +600,30 @@ function renderCalendar() {
   });
 }
 
-document.getElementById("calPrev").addEventListener("click", () => {
-  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
-  renderCalendar();
-});
-document.getElementById("calNext").addEventListener("click", () => {
-  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
-  renderCalendar();
-});
-
 function openDayModal(dateStr) {
-  calSelectedDate = dateStr;
   const stat = dayStatsFor(dateStr);
   const record = DATA.days[dateStr] || {};
   document.getElementById("dayModalTitle").textContent = dateStr;
 
   const statuses = ["Completed", "Partial", "Missed", "Rest"];
   document.getElementById("dayModalBody").innerHTML = `
-    <div class="grid three">
-      <div><div class="muted small">Total</div><div class="mono">${hoursLabel(stat.total)}</div></div>
-      <div><div class="muted small">RRB JE</div><div class="mono">${hoursLabel(stat.rrb)}</div></div>
-      <div><div class="muted small">CUET</div><div class="mono">${hoursLabel(stat.cuet)}</div></div>
+    <div class="day-stats-grid">
+      <div><div class="stat-mini-label">Total</div><div class="stat-mini-value">${hoursLabel(stat.total)}</div></div>
+      <div><div class="stat-mini-label">RRB JE</div><div class="stat-mini-value">${hoursLabel(stat.rrb)}</div></div>
+      <div><div class="stat-mini-label">CUET</div><div class="stat-mini-value">${hoursLabel(stat.cuet)}</div></div>
     </div>
-    <div class="row gap">
+    <div class="status-btn-row">
       ${statuses.map((st) => `<button class="btn ${record.status === st ? "primary" : "ghost"} status-btn" data-status="${st}">${st}</button>`).join("")}
     </div>
     <label class="field">Note for this date<textarea id="dayNote" rows="2">${esc(record.note || "")}</textarea></label>
     ${stat.sessions.length > 0 ? `
       <div>
-        <div class="muted small" style="margin-bottom:8px">Sessions this day</div>
-        ${stat.sessions.map((s) => `<div class="list-row"><span>${esc(s.subject)} — ${esc(s.topic)}</span><span class="mono muted">${hoursLabel(s.durationMinutes)}</span></div>`).join("")}
+        <div class="day-sessions-title">Sessions this day</div>
+        ${stat.sessions.map((s) => `
+          <div class="list-row">
+            <span class="row-main-line">${esc(s.subject)} — ${esc(s.topic)}</span>
+            <span class="mono muted small">${hoursLabel(s.durationMinutes)}</span>
+          </div>`).join("")}
       </div>` : ""}
   `;
 
@@ -594,7 +641,20 @@ function openDayModal(dateStr) {
   openModal("dayModal");
 }
 
-/* ===================== SYLLABUS ===================== */
+function wireCalendar() {
+  document.getElementById("calPrev").addEventListener("click", () => {
+    calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  document.getElementById("calNext").addEventListener("click", () => {
+    calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1);
+    renderCalendar();
+  });
+}
+
+/* ============================================================
+   SYLLABUS
+   ============================================================ */
 const STATUS_CYCLE = ["Not Started", "In Progress", "Completed", "Needs Revision"];
 const STATUS_TONE = { "Not Started": "", "In Progress": "amber", "Completed": "green", "Needs Revision": "red" };
 
@@ -602,18 +662,6 @@ function refreshTopicFormSubjects() {
   const exam = document.getElementById("topicExam").value;
   document.getElementById("topicSubject").innerHTML = subjectOptionsHTML(exam);
 }
-document.getElementById("topicExam").addEventListener("change", refreshTopicFormSubjects);
-
-document.getElementById("btnAddTopic").addEventListener("click", () => {
-  const exam = document.getElementById("topicExam").value;
-  const subject = document.getElementById("topicSubject").value;
-  const topicInput = document.getElementById("topicName");
-  const topic = topicInput.value.trim();
-  if (!topic) return;
-  addTopic({ exam, subject, topic, status: "Not Started", revisionCount: 0, notes: "" });
-  topicInput.value = "";
-  renderSyllabus();
-});
 
 function renderSyllabus() {
   refreshTopicFormSubjects();
@@ -650,17 +698,17 @@ function renderSyllabus() {
     const pct = topics.length > 0 ? Math.round((done / topics.length) * 100) : 0;
     return `
       <div class="panel">
-        <div class="row between" style="margin-bottom:8px"><h3 style="margin:0">${esc(subject)}</h3><span class="mono muted small">${done}/${topics.length} done</span></div>
+        <div class="panel-head-row"><h3>${esc(subject)}</h3><span class="mono muted small">${done}/${topics.length} done</span></div>
         <div class="meter-track"><div class="meter-fill" style="width:${pct}%;background:var(--green)"></div></div>
-        <div style="margin-top:10px">
+        <div style="margin-top:12px">
           ${topics.map((t) => `
-            <div class="list-row" data-id="${t.id}">
-              <div style="min-width:0">
-                <div>${esc(t.topic)}</div>
+            <div class="list-row has-actions" data-id="${t.id}">
+              <div class="row-main">
+                <div class="row-main-line">${esc(t.topic)}</div>
                 <div class="muted small">${esc(t.exam)}${t.revisionCount > 0 ? ` · revised ${t.revisionCount}×` : ""}${t.completionDate ? ` · done ${t.completionDate}` : ""}</div>
               </div>
-              <div class="row gap" style="margin:0">
-                <button class="badge ${STATUS_TONE[t.status]} cycle-status" style="cursor:pointer;border:1px solid var(--border);background:var(--surface2)">${t.status}</button>
+              <div class="row-actions">
+                <button class="badge clickable cycle-status ${STATUS_TONE[t.status]}">${t.status}</button>
                 <button class="btn danger del-topic">Delete</button>
               </div>
             </div>`).join("")}
@@ -690,15 +738,38 @@ function renderSyllabus() {
   });
 }
 
-document.getElementById("synFilterExam").addEventListener("change", renderSyllabus);
-document.getElementById("synFilterSubject").addEventListener("change", renderSyllabus);
-document.getElementById("synFilterStatus").addEventListener("change", renderSyllabus);
+function wireSyllabus() {
+  document.getElementById("topicExam").addEventListener("change", refreshTopicFormSubjects);
 
-/* ===================== MOCK TESTS ===================== */
+  document.getElementById("btnAddTopic").addEventListener("click", () => {
+    const exam = document.getElementById("topicExam").value;
+    const subject = document.getElementById("topicSubject").value;
+    const topicInput = document.getElementById("topicName");
+    const topic = topicInput.value.trim();
+    if (!topic) return;
+    addTopic({ exam, subject, topic, status: "Not Started", revisionCount: 0, notes: "" });
+    topicInput.value = "";
+    renderSyllabus();
+  });
+
+  document.getElementById("synFilterExam").addEventListener("change", renderSyllabus);
+  document.getElementById("synFilterSubject").addEventListener("change", renderSyllabus);
+  document.getElementById("synFilterStatus").addEventListener("change", renderSyllabus);
+
+  refreshTopicFormSubjects();
+}
+
+/* ============================================================
+   MOCK TESTS
+   ============================================================ */
 let editingMockId = null;
 
 function blankMock() {
-  return { date: todayStr(), exam: "RRB JE", testName: "", subject: "", totalQuestions: 0, attempted: 0, correct: 0, incorrect: 0, unattempted: 0, marksObtained: 0, maxMarks: 0, timeTakenMinutes: 0, notes: "", mistakes: "" };
+  return {
+    date: todayStr(), exam: "RRB JE", testName: "", subject: "", totalQuestions: 0,
+    attempted: 0, correct: 0, incorrect: 0, unattempted: 0, marksObtained: 0, maxMarks: 0,
+    timeTakenMinutes: 0, notes: "", mistakes: "",
+  };
 }
 
 function openMockModal(mock) {
@@ -723,43 +794,20 @@ function openMockModal(mock) {
   openModal("mockModal");
 }
 
-document.getElementById("btnAddMock").addEventListener("click", () => openMockModal(null));
-
-document.getElementById("mSave").addEventListener("click", () => {
-  const payload = {
-    date: document.getElementById("mDate").value,
-    exam: document.getElementById("mExam").value,
-    subject: document.getElementById("mSubject").value,
-    testName: document.getElementById("mName").value,
-    totalQuestions: Number(document.getElementById("mTotal").value || 0),
-    attempted: Number(document.getElementById("mAttempted").value || 0),
-    correct: Number(document.getElementById("mCorrect").value || 0),
-    incorrect: Number(document.getElementById("mIncorrect").value || 0),
-    unattempted: Number(document.getElementById("mUnattempted").value || 0),
-    marksObtained: Number(document.getElementById("mMarks").value || 0),
-    maxMarks: Number(document.getElementById("mMaxMarks").value || 0),
-    timeTakenMinutes: Number(document.getElementById("mTime").value || 0),
-    mistakes: document.getElementById("mMistakes").value,
-    notes: document.getElementById("mNotes").value,
-  };
-  if (!payload.date) { alert("Please pick a date."); return; }
-  if (editingMockId) updateMockTest(editingMockId, payload);
-  else addMockTest(payload);
-  closeModal("mockModal");
-  renderMocks();
-});
-
 function renderMocks() {
   const sorted = [...DATA.mockTests].sort((a, b) => (a.date < b.date ? 1 : -1));
   const chartData = [...DATA.mockTests].sort((a, b) => (a.date > b.date ? 1 : -1))
     .map((m) => ({ date: m.date.slice(5), score: m.maxMarks > 0 ? Math.round((m.marksObtained / m.maxMarks) * 100) : 0 }));
 
+  const chartPanel = document.getElementById("mockChartPanel");
   const chartEl = document.getElementById("mockChart");
   if (chartData.length < 2) {
-    chartEl.innerHTML = `<p class="muted small">Add at least 2 mock tests to see a score trend.</p>`;
+    chartPanel.classList.add("hidden");
+    chartEl.innerHTML = "";
   } else {
+    chartPanel.classList.remove("hidden");
     const max = Math.max(100, ...chartData.map((d) => d.score));
-    chartEl.className = "trend";
+    chartEl.className = "chart trend";
     chartEl.innerHTML = chartData.map((d) => `
       <div class="trend-col">
         <span class="mono small">${d.score}%</span>
@@ -773,13 +821,13 @@ function renderMocks() {
     : sorted.map((m) => {
       const pct = m.maxMarks > 0 ? ((m.marksObtained / m.maxMarks) * 100).toFixed(1) : "—";
       return `
-      <div class="list-row row-entry" data-id="${m.id}">
-        <span class="mono muted small entry-date">${m.date}</span>
-        <div class="entry-content">
+      <div class="list-row has-actions" data-id="${m.id}">
+        <span class="mono muted small row-fixed">${m.date}</span>
+        <div class="row-main">
           <div>${badgeExam(m.exam)} <strong>${esc(m.testName || "Untitled test")}</strong></div>
           <div class="muted small">${m.correct}/${m.attempted} correct of ${m.totalQuestions} · ${m.marksObtained}/${m.maxMarks} marks (${pct}%) · ${m.timeTakenMinutes}min</div>
         </div>
-        <div class="entry-actions">
+        <div class="row-actions">
           <button class="btn ghost edit-mock">Edit</button>
           <button class="btn danger del-mock">Delete</button>
         </div>
@@ -800,22 +848,45 @@ function renderMocks() {
   });
 }
 
-/* ===================== ANALYTICS ===================== */
+function wireMocks() {
+  document.getElementById("btnAddMock").addEventListener("click", () => openMockModal(null));
+
+  document.getElementById("mSave").addEventListener("click", () => {
+    const date = document.getElementById("mDate").value;
+    if (!date) { alert("Please pick a date."); return; }
+    const payload = {
+      date,
+      exam: document.getElementById("mExam").value,
+      subject: document.getElementById("mSubject").value,
+      testName: document.getElementById("mName").value,
+      totalQuestions: Number(document.getElementById("mTotal").value || 0),
+      attempted: Number(document.getElementById("mAttempted").value || 0),
+      correct: Number(document.getElementById("mCorrect").value || 0),
+      incorrect: Number(document.getElementById("mIncorrect").value || 0),
+      unattempted: Number(document.getElementById("mUnattempted").value || 0),
+      marksObtained: Number(document.getElementById("mMarks").value || 0),
+      maxMarks: Number(document.getElementById("mMaxMarks").value || 0),
+      timeTakenMinutes: Number(document.getElementById("mTime").value || 0),
+      mistakes: document.getElementById("mMistakes").value,
+      notes: document.getElementById("mNotes").value,
+    };
+    if (editingMockId) updateMockTest(editingMockId, payload);
+    else addMockTest(payload);
+    closeModal("mockModal");
+    renderMocks();
+  });
+}
+
+/* ============================================================
+   ANALYTICS
+   ============================================================ */
 function renderAnalytics() {
+  const body = document.getElementById("analyticsBody");
+
   if (DATA.sessions.length === 0) {
-    document.getElementById("anStats").innerHTML = "";
-    document.querySelector("#tab-analytics").querySelectorAll(".panel").forEach((p) => p.classList.add("hidden"));
-    if (!document.getElementById("anEmpty")) {
-      const div = document.createElement("div");
-      div.id = "anEmpty";
-      div.innerHTML = emptyState("Not enough data yet", "Log a few study sessions and analytics will appear here automatically.");
-      document.getElementById("tab-analytics").appendChild(div);
-    }
+    body.innerHTML = emptyState("Not enough data yet", "Log a few study sessions and analytics will appear here automatically.");
     return;
   }
-  const emptyEl = document.getElementById("anEmpty");
-  if (emptyEl) emptyEl.remove();
-  document.querySelector("#tab-analytics").querySelectorAll(".panel").forEach((p) => p.classList.remove("hidden"));
 
   const totalMin = DATA.sessions.reduce((a, s) => a + s.durationMinutes, 0);
   const rrbMin = DATA.sessions.filter((s) => s.exam === "RRB JE").reduce((a, s) => a + s.durationMinutes, 0);
@@ -825,42 +896,21 @@ function renderAnalytics() {
   const accuracy = attempted > 0 ? ((correct / attempted) * 100).toFixed(1) + "%" : "—";
   const missedDays = Object.values(DATA.days).filter((d) => d.status === "Missed").length;
 
-  document.getElementById("anStats").innerHTML = `
-    <div class="panel"><div class="stat"><span class="label">Total hours</span><span class="value mono">${hoursLabel(totalMin)}</span></div></div>
-    <div class="panel"><div class="stat"><span class="label">RRB JE vs CUET</span><span class="value mono" style="color:var(--teal);font-size:16px">${hoursLabel(rrbMin)} / ${hoursLabel(cuetMin)}</span></div></div>
-    <div class="panel"><div class="stat"><span class="label">Overall accuracy</span><span class="value mono" style="color:var(--green)">${accuracy}</span></div></div>
-    <div class="panel"><div class="stat"><span class="label">Missed days</span><span class="value mono" style="color:var(--red)">${missedDays}</span></div></div>
-  `;
-
-  // this week's hours
   const weekStart = startOfWeekMon(new Date());
   const weekData = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(weekStart); d.setDate(d.getDate() + i);
-    const dStr = dstr(d);
-    const mins = DATA.sessions.filter((s) => s.date === dStr).reduce((a, s) => a + s.durationMinutes, 0);
+    const dateStr = dstr(d);
+    const mins = DATA.sessions.filter((s) => s.date === dateStr).reduce((a, s) => a + s.durationMinutes, 0);
     weekData.push({ day: d.toLocaleDateString("en-IN", { weekday: "short" }), hours: +(mins / 60).toFixed(1) });
   }
   const maxH = Math.max(1, ...weekData.map((d) => d.hours));
-  document.getElementById("anWeekChart").innerHTML = weekData.map((d) => `
-    <div class="bar-col">
-      <span class="mono small">${d.hours}h</span>
-      <div class="bar" style="height:${(d.hours / maxH) * 120}px"></div>
-      <span class="bar-label">${d.day}</span>
-    </div>`).join("");
 
-  // hours by subject
   const subjMap = {};
   DATA.sessions.forEach((s) => { subjMap[s.subject] = (subjMap[s.subject] || 0) + s.durationMinutes / 60; });
   const subjEntries = Object.entries(subjMap).sort((a, b) => b[1] - a[1]);
   const maxSubj = Math.max(1, ...subjEntries.map((e) => e[1]));
-  document.getElementById("anSubjectChart").innerHTML = subjEntries.map(([subject, hours]) => `
-    <div class="subject-bar-row">
-      <div class="label"><span>${esc(subject)}</span><span class="mono">${hours.toFixed(1)}h</span></div>
-      <div class="meter-track"><div class="meter-fill" style="width:${(hours / maxSubj) * 100}%;background:var(--amber)"></div></div>
-    </div>`).join("");
 
-  // weakest subjects
   const accMap = {};
   DATA.sessions.forEach((s) => {
     if (s.questionsAttempted === 0) return;
@@ -868,33 +918,77 @@ function renderAnalytics() {
     accMap[s.subject].attempted += s.questionsAttempted;
     accMap[s.subject].correct += s.questionsCorrect;
   });
-  const weak = Object.entries(accMap).map(([subject, v]) => ({ subject, accuracy: (v.correct / v.attempted) * 100 })).sort((a, b) => a.accuracy - b.accuracy).slice(0, 4);
-  document.getElementById("anWeak").innerHTML = weak.length === 0
-    ? `<p class="muted small">Log questions attempted/correct in sessions to see this.</p>`
-    : weak.map((w) => `<div class="list-row"><span>${esc(w.subject)}</span><span class="mono" style="color:var(--red)">${w.accuracy.toFixed(1)}%</span></div>`).join("");
+  const weak = Object.entries(accMap)
+    .map(([subject, v]) => ({ subject, accuracy: (v.correct / v.attempted) * 100 }))
+    .sort((a, b) => a.accuracy - b.accuracy)
+    .slice(0, 4);
 
-  // revision suggestions
   const revisions = DATA.topics.filter((t) => t.status === "Needs Revision");
-  document.getElementById("anRevision").innerHTML = revisions.length === 0
-    ? `<p class="muted small">No topics currently flagged Needs Revision.</p>`
-    : `<div class="chips">${revisions.map((t) => `<span class="badge red">${esc(t.subject)} · ${esc(t.topic)}</span>`).join("")}</div>`;
+
+  body.innerHTML = `
+    <div class="grid stats4">
+      <div class="panel"><div class="stat"><span class="label">Total hours</span><span class="value mono">${hoursLabel(totalMin)}</span></div></div>
+      <div class="panel"><div class="stat"><span class="label">RRB JE vs CUET</span><span class="value mono accent-teal">${hoursLabel(rrbMin)} / ${hoursLabel(cuetMin)}</span></div></div>
+      <div class="panel"><div class="stat"><span class="label">Overall accuracy</span><span class="value mono accent-green">${accuracy}</span></div></div>
+      <div class="panel"><div class="stat"><span class="label">Missed days</span><span class="value mono accent-red">${missedDays}</span></div></div>
+    </div>
+    <div class="panel">
+      <h3>This week's hours</h3>
+      <div class="chart bars">
+        ${weekData.map((d) => `
+          <div class="bar-col">
+            <span class="mono small">${d.hours}h</span>
+            <div class="bar" style="height:${(d.hours / maxH) * 120}px"></div>
+            <span class="bar-label">${d.day}</span>
+          </div>`).join("")}
+      </div>
+    </div>
+    <div class="grid two">
+      <div class="panel">
+        <h3>Hours by subject</h3>
+        ${subjEntries.map(([subject, hours]) => `
+          <div class="subject-bar-row">
+            <div class="label"><span>${esc(subject)}</span><span class="mono">${hours.toFixed(1)}h</span></div>
+            <div class="meter-track"><div class="meter-fill" style="width:${(hours / maxSubj) * 100}%;background:var(--blue)"></div></div>
+          </div>`).join("")}
+      </div>
+      <div class="panel">
+        <h3>Weakest subjects (by accuracy)</h3>
+        ${weak.length === 0
+          ? `<p class="muted small">Log questions attempted/correct in sessions to see this.</p>`
+          : weak.map((w) => `
+            <div class="list-row">
+              <span class="row-main-line">${esc(w.subject)}</span>
+              <span class="mono" style="color:var(--red)">${w.accuracy.toFixed(1)}%</span>
+            </div>`).join("")}
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Suggested revision</h3>
+      ${revisions.length === 0
+        ? `<p class="muted small">No topics currently flagged Needs Revision.</p>`
+        : `<div class="chips">${revisions.map((t) => `<span class="badge red">${esc(t.subject)} · ${esc(t.topic)}</span>`).join("")}</div>`}
+    </div>
+  `;
 }
 
-/* ===================== SETTINGS ===================== */
+/* ============================================================
+   SETTINGS
+   ============================================================ */
 function renderSettings() {
   document.getElementById("setDaily").value = DATA.settings.dailyTargetHours;
   document.getElementById("setRRB").value = DATA.settings.rrbTargetHours;
   document.getElementById("setCUET").value = DATA.settings.cuetTargetHours;
   document.getElementById("setStartDate").value = DATA.settings.startDate;
 
-  renderSubjectChips("RRB JE", "subjectsRRB");
-  renderSubjectChips("CUET", "subjectsCUET");
+  renderSubjectChips("RRB JE", "subjectsRRB", "amber");
+  renderSubjectChips("CUET", "subjectsCUET", "teal");
 }
 
-function renderSubjectChips(exam, containerId) {
+function renderSubjectChips(exam, containerId, tone) {
   const container = document.getElementById(containerId);
   container.innerHTML = DATA.settings.subjects[exam].map((s) => `
-    <span class="chip badge ${exam === "RRB JE" ? "amber" : "teal"}">${esc(s)} <button data-subject="${esc(s)}">×</button></span>
+    <span class="chip badge ${tone}">${esc(s)} <button data-subject="${esc(s)}" aria-label="Remove ${esc(s)}">×</button></span>
   `).join("");
   container.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -904,28 +998,6 @@ function renderSubjectChips(exam, containerId) {
     });
   });
 }
-
-document.getElementById("setDaily").addEventListener("change", (e) => updateSettings({ dailyTargetHours: Number(e.target.value || 0) }));
-document.getElementById("setRRB").addEventListener("change", (e) => updateSettings({ rrbTargetHours: Number(e.target.value || 0) }));
-document.getElementById("setCUET").addEventListener("change", (e) => updateSettings({ cuetTargetHours: Number(e.target.value || 0) }));
-document.getElementById("setStartDate").addEventListener("change", (e) => updateSettings({ startDate: e.target.value }));
-
-document.getElementById("btnAddSubjectRRB").addEventListener("click", () => {
-  const input = document.getElementById("newSubjectRRB");
-  const name = input.value.trim();
-  if (!name) return;
-  updateSettings({ subjects: Object.assign({}, DATA.settings.subjects, { "RRB JE": [...DATA.settings.subjects["RRB JE"], name] }) });
-  input.value = "";
-  renderSettings();
-});
-document.getElementById("btnAddSubjectCUET").addEventListener("click", () => {
-  const input = document.getElementById("newSubjectCUET");
-  const name = input.value.trim();
-  if (!name) return;
-  updateSettings({ subjects: Object.assign({}, DATA.settings.subjects, { "CUET": [...DATA.settings.subjects["CUET"], name] }) });
-  input.value = "";
-  renderSettings();
-});
 
 function downloadFile(filename, content, mime) {
   const blob = new Blob([content], { type: mime });
@@ -940,58 +1012,106 @@ function toCSV() {
   const headers = ["date", "startTime", "endTime", "durationMinutes", "exam", "subject", "topic", "subtopic", "studyType", "questionsAttempted", "questionsCorrect", "accuracy", "confidence", "completed", "notes"];
   const rows = DATA.sessions.map((s) => {
     const accuracy = s.questionsAttempted > 0 ? ((s.questionsCorrect / s.questionsAttempted) * 100).toFixed(1) : "";
-    return [s.date, s.startTime, s.endTime, s.durationMinutes, s.exam, s.subject, s.topic, s.subtopic, s.studyType, s.questionsAttempted, s.questionsCorrect, accuracy, s.confidence, s.completed, String(s.notes || "").replace(/\n/g, " ").replace(/,/g, ";")].join(",");
+    return [
+      s.date, s.startTime, s.endTime, s.durationMinutes, s.exam, s.subject, s.topic, s.subtopic,
+      s.studyType, s.questionsAttempted, s.questionsCorrect, accuracy, s.confidence, s.completed,
+      String(s.notes || "").replace(/\n/g, " ").replace(/,/g, ";"),
+    ].join(",");
   });
   return [headers.join(","), ...rows].join("\n");
 }
 
-document.getElementById("btnExportJSON").addEventListener("click", () => {
-  downloadFile(`prep-tracker-backup-${todayStr()}.json`, JSON.stringify(DATA, null, 2), "application/json");
-});
-document.getElementById("btnExportCSV").addEventListener("click", () => {
-  downloadFile(`prep-tracker-sessions-${todayStr()}.csv`, toCSV(), "text/csv");
-});
-document.getElementById("btnImport").addEventListener("click", () => document.getElementById("fileImport").click());
-document.getElementById("fileImport").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const parsed = JSON.parse(reader.result);
-      if (!parsed.sessions || !parsed.settings) throw new Error("Invalid backup file");
-      DATA = { sessions: parsed.sessions || [], days: parsed.days || {}, topics: parsed.topics || [], mockTests: parsed.mockTests || [], plans: parsed.plans || {}, settings: Object.assign({}, DEFAULT_SETTINGS, parsed.settings || {}) };
-      save();
-      alert("Backup restored successfully.");
-      renderTab(currentTab());
-    } catch (err) {
-      alert("Could not read this file — make sure it's a valid backup exported from this app.");
-    }
-  };
-  reader.readAsText(file);
-  e.target.value = "";
-});
+function wireSettings() {
+  document.getElementById("setDaily").addEventListener("change", (e) => updateSettings({ dailyTargetHours: Number(e.target.value || 0) }));
+  document.getElementById("setRRB").addEventListener("change", (e) => updateSettings({ rrbTargetHours: Number(e.target.value || 0) }));
+  document.getElementById("setCUET").addEventListener("change", (e) => updateSettings({ cuetTargetHours: Number(e.target.value || 0) }));
+  document.getElementById("setStartDate").addEventListener("change", (e) => updateSettings({ startDate: e.target.value }));
 
-document.getElementById("resetZone").addEventListener("click", (e) => {
-  if (e.target.id === "btnReset") {
+  document.getElementById("btnAddSubjectRRB").addEventListener("click", () => {
+    const input = document.getElementById("newSubjectRRB");
+    const name = input.value.trim();
+    if (!name) return;
+    updateSettings({ subjects: Object.assign({}, DATA.settings.subjects, { "RRB JE": [...DATA.settings.subjects["RRB JE"], name] }) });
+    input.value = "";
+    renderSettings();
+  });
+  document.getElementById("btnAddSubjectCUET").addEventListener("click", () => {
+    const input = document.getElementById("newSubjectCUET");
+    const name = input.value.trim();
+    if (!name) return;
+    updateSettings({ subjects: Object.assign({}, DATA.settings.subjects, { "CUET": [...DATA.settings.subjects["CUET"], name] }) });
+    input.value = "";
+    renderSettings();
+  });
+
+  document.getElementById("btnExportJSON").addEventListener("click", () => {
+    downloadFile(`prep-tracker-backup-${todayStr()}.json`, JSON.stringify(DATA, null, 2), "application/json");
+  });
+  document.getElementById("btnExportCSV").addEventListener("click", () => {
+    downloadFile(`prep-tracker-sessions-${todayStr()}.csv`, toCSV(), "text/csv");
+  });
+  document.getElementById("btnImport").addEventListener("click", () => document.getElementById("fileImport").click());
+  document.getElementById("fileImport").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+        if (!parsed.sessions || !parsed.settings) throw new Error("Invalid backup file");
+        DATA = {
+          sessions: parsed.sessions || [], days: parsed.days || {}, topics: parsed.topics || [],
+          mockTests: parsed.mockTests || [], plans: parsed.plans || {},
+          settings: Object.assign(cloneSettings(), parsed.settings || {}),
+        };
+        save();
+        alert("Backup restored successfully.");
+        renderTab(currentTab());
+      } catch (err) {
+        alert("Could not read this file — make sure it's a valid backup exported from this app.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  document.getElementById("resetZone").addEventListener("click", (e) => {
     const zone = document.getElementById("resetZone");
-    zone.innerHTML = `
-      <div class="row gap">
-        <span class="small" style="color:var(--red)">This deletes all sessions, topics, mock tests and plans. Sure?</span>
-        <button class="btn danger" id="confirmReset">Yes, delete everything</button>
-        <button class="btn ghost" id="cancelReset">Cancel</button>
-      </div>`;
-  } else if (e.target.id === "confirmReset") {
-    DATA = { sessions: [], days: {}, topics: [], mockTests: [], plans: {}, settings: DATA.settings };
-    save();
-    document.getElementById("resetZone").innerHTML = `<button class="btn danger" id="btnReset">Reset all data</button>`;
-    renderTab(currentTab());
-  } else if (e.target.id === "cancelReset") {
-    document.getElementById("resetZone").innerHTML = `<button class="btn danger" id="btnReset">Reset all data</button>`;
-  }
-});
+    if (e.target.id === "btnReset") {
+      zone.innerHTML = `
+        <div class="toolbar" style="align-items:center">
+          <span class="small" style="color:var(--red)">This deletes all sessions, topics, mock tests and plans. Sure?</span>
+          <button class="btn danger" id="confirmReset">Yes, delete everything</button>
+          <button class="btn ghost" id="cancelReset">Cancel</button>
+        </div>`;
+    } else if (e.target.id === "confirmReset") {
+      DATA = { sessions: [], days: {}, topics: [], mockTests: [], plans: {}, settings: DATA.settings };
+      save();
+      zone.innerHTML = `<button class="btn danger" id="btnReset">Reset all data</button>`;
+      renderTab(currentTab());
+    } else if (e.target.id === "cancelReset") {
+      zone.innerHTML = `<button class="btn danger" id="btnReset">Reset all data</button>`;
+    }
+  });
+}
 
-/* ===================== INIT ===================== */
-refreshTopicFormSubjects();
-document.getElementById("sExam").dispatchEvent(new Event("change"));
-showTab("dashboard");
+/* ============================================================
+   INIT
+   ============================================================ */
+function init() {
+  wireStaticControls();
+  wireSessionModal();
+  wireLog();
+  wirePlan();
+  wireCalendar();
+  wireSyllabus();
+  wireMocks();
+  wireSettings();
+  showTab("dashboard");
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
